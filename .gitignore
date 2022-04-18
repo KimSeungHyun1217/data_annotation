@@ -1,0 +1,11 @@
+/input
+/project
+.cache
+.ipython
+.jupyter
+.local
+.vscode-server
+.bash_history
+.bashrc
+.git-credentials
+.gitconfig
