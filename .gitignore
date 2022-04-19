@@ -9,4 +9,4 @@
 .bashrc
 .git-credentials
 .gitconfig
-*/.ipynb_checkpoints
+*/.ipynb_checkpoints/*
