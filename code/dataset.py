@@ -395,10 +395,12 @@ class SceneTextDataset(Dataset):
         funcs = []
 
         # funcs.extend([
+        #     A.Sharpen(),
         #     A.OneOf([
         #         A.HueSaturationValue(hue_shift_limit=0.2, sat_shift_limit=0.2,val_shift_limit=0.2,p=0.9),
         #         A.RandomBrightnessContrast(brightness_limit=0.2,contrast_limit=0.2,p=0.9)
         #     ]),
+        #     
         # ])
 
         if self.color_jitter:
