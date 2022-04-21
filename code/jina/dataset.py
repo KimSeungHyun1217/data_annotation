@@ -1,7 +1,7 @@
 import os.path as osp
 import math
 import json
-from PIL import Image,ImageOps
+from PIL import Image
 
 import torch
 import numpy as np
@@ -10,6 +10,9 @@ import albumentations as A
 from torch.utils.data import Dataset
 from shapely.geometry import Polygon
 
+from transform import *
+
+from PIL import Image, ImageOps
 
 def cal_distance(x1, y1, x2, y2):
     '''calculate the Euclidean distance'''
@@ -324,7 +327,7 @@ def filter_vertices(vertices, labels, ignore_under=0, drop_under=0):
     new_vertices, new_labels = vertices.copy(), labels.copy()
 
     areas = np.array([Polygon(v.reshape((4, 2))).convex_hull.area for v in vertices])
-    labels[areas < ignore_under] = 0
+    new_labels[areas < ignore_under] = 0
 
     if drop_under > 0:
         passed = areas >= drop_under
@@ -332,36 +335,22 @@ def filter_vertices(vertices, labels, ignore_under=0, drop_under=0):
 
     return new_vertices, new_labels
 
-def HorizonFilp_img(img,vertices):
-    h, w = img.height, img.width
-    new_vertices = np.zeros(vertices.shape)
-    image = ImageOps.mirror(img)
-    new_vertices = np.array([vertice[::-1] for vertice in vertices])
-    return image, new_vertices
-
-def VerticalFlip_img(img,vertices):
-    h, w = img.height, img.width
-    new_vertices = np.zeros(vertices.shape)
-    image = ImageOps.flip(img)
-    for j in range(len(vertices)):
-        for i in range(len(j)):
-            new_vertices[i][j] = vertices[:,j][::-1][i]
-
-    return image, new_vertices
-
 
 class SceneTextDataset(Dataset):
     def __init__(self, root_dir, split='train', image_size=1024, crop_size=512, color_jitter=True,
-                 normalize=True):
+                 normalize=True, transform=None):
         with open(osp.join(root_dir, 'ufo/{}.json'.format(split)), 'r') as f:
             anno = json.load(f)
-
+        
+        self.split = split
         self.anno = anno
         self.image_fnames = sorted(anno['images'].keys())
         self.image_dir = osp.join(root_dir, 'images')
 
         self.image_size, self.crop_size = image_size, crop_size
         self.color_jitter, self.normalize = color_jitter, normalize
+        
+        self.transform = transform
 
     def __len__(self):
         return len(self.image_fnames)
@@ -371,46 +360,107 @@ class SceneTextDataset(Dataset):
         image_fpath = osp.join(self.image_dir, image_fname)
 
         vertices, labels = [], []
-
-        bboxes = []
         for word_info in self.anno['images'][image_fname]['words'].values():
             vertices.append(np.array(word_info['points']).flatten())
             labels.append(int(not word_info['illegibility']))
-
         vertices, labels = np.array(vertices, dtype=np.float32), np.array(labels, dtype=np.int64)
+
         vertices, labels = filter_vertices(vertices, labels, ignore_under=10, drop_under=1)
-        
+
         image = Image.open(image_fpath)
+        image = ImageOps.exif_transpose(image)
+
         image, vertices = resize_img(image, vertices, self.image_size)
         image, vertices = adjust_height(image, vertices)
         image, vertices = rotate_img(image, vertices)
         image, vertices = crop_img(image, vertices, labels, self.crop_size)
-        # 주석 처리된 코드들은 모두 사용가능 필요하면 주석해제하고 사용하기
-        # image, vertices = HorizonFilp_img(image,vertices)
-        # image, vertices = VerticalFlip_img(image,vertice)
+
         if image.mode != 'RGB':
             image = image.convert('RGB')
         image = np.array(image)
 
         funcs = []
-
-        # funcs.extend([
-        #     A.Sharpen(alpha=(0.2, 0.5), lightness=(0.5, 1.0), always_apply=False, p=0.5),
-        #     A.OneOf([
-        #         A.HueSaturationValue(hue_shift_limit=0.2, sat_shift_limit=0.2,val_shift_limit=0.2,p=0.9),
-        #         A.RandomBrightnessContrast(brightness_limit=0.2,contrast_limit=0.2,p=0.9)
-        #     ]),
-        #     
-        # ])
-
         if self.color_jitter:
-            funcs.append(A.ColorJitter(0.5, 0.5, 0.5, 0.25))
+            funcs.append(A.ColorJitter(0.5, 0.5, 0.5, 0.25, p=0.3))
         if self.normalize:
             funcs.append(A.Normalize(mean=(0.5, 0.5, 0.5), std=(0.5, 0.5, 0.5)))
-        transform = A.Compose(funcs,p=0.8)
+        transform = A.Compose(funcs)
+
+        # if self.transform is not None:
+        #     transformed = self.transform(image=image,word_bboxes=word_bboxes)
+        # image = transformed['image']
+        # word_bboxes = transformed['word_bboxes']
 
         image = transform(image=image)['image']
         word_bboxes = np.reshape(vertices, (-1, 4, 2))
         roi_mask = generate_roi_mask(image, vertices, labels)
 
         return image, word_bboxes, roi_mask
+
+
+# class TransformDataset(Dataset):
+#     def __init__(self, root_dir, split='train', transform = True):
+#         with open(osp.join(root_dir, 'ufo/{}.json'.format(split)), 'r') as f:
+#             anno = json.load(f)
+        
+#         self.split = split
+#         self.anno = anno
+#         self.image_fnames = sorted(anno['images'].keys())
+#         self.image_dir = osp.join(root_dir, 'images')
+        
+#         self.transform = None
+#         if transform:
+#             self.transform = ComposedTransformation(
+#     rotate_range=30, crop_aspect_ratio=1.0, crop_size=(1.0, 1.0),
+#     hflip=True, vflip=True, random_translate=True,
+#     resize_to=512,
+#     min_image_overlap=0.9, min_bbox_overlap=0.99, min_bbox_count=1, allow_partial_occurrence=True,
+#     max_random_trials=1000,
+#     brightness=0.5, contrast=0.5, saturation=0.5, hue=0.25,
+#     normalize=True, mean=(0.5, 0.5, 0.5), std=(0.5, 0.5, 0.5),
+# )
+
+#     def __len__(self):
+#         return len(self.image_fnames)
+
+#     def __getitem__(self, idx):
+#         image_fname = self.image_fnames[idx]
+#         image_fpath = osp.join(self.image_dir, image_fname)
+
+#         vertices, labels = [], []
+#         for word_info in self.anno['images'][image_fname]['words'].values():
+#             vertices.append(np.array(word_info['points']))
+#             labels.append(int(not word_info['illegibility']))
+#         vertices, labels = np.array(vertices, dtype=np.float32), np.array(labels, dtype=np.int64)
+
+#         vertices, labels = filter_vertices(vertices, labels, ignore_under=10, drop_under=1)
+
+#         image = Image.open(image_fpath)
+#         image = ImageOps.exif_transpose(image)
+
+#         image, vertices = resize_img(image, vertices, self.image_size)
+#         image, vertices = adjust_height(image, vertices)
+#         image, vertices = rotate_img(image, vertices)
+#         image, vertices = crop_img(image, vertices, labels, self.crop_size)
+
+#         if image.mode != 'RGB':
+#             image = image.convert('RGB')
+#         image = np.array(image)
+
+#         if self.transform:
+#             transforms = self.transform(image=image, word_bboxes=vertices)
+#             image = transforms['image']
+#             vertices = transforms['word_bboxes']
+            
+#         funcs = []
+#         if self.color_jitter:
+#             funcs.append(A.ColorJitter(0.5, 0.5, 0.5, 0.25))
+#         if self.normalize:
+#             funcs.append(A.Normalize(mean=(0.5, 0.5, 0.5), std=(0.5, 0.5, 0.5)))
+#         transform = A.Compose(funcs)
+
+#         image = transform(image=image)['image']
+#         word_bboxes = np.reshape(vertices, (-1, 4, 2))
+#         roi_mask = generate_roi_mask(image, vertices, labels)
+
+#         return image, word_bboxes, roi_mask
