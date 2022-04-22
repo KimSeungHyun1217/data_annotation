@@ -65,60 +65,15 @@
 
 | 데이터셋 | 언어 | 변경사항 | 결과 |
 | --- | --- | --- | --- |
-| ICDAR17 | Ko,En,others, 1만장 | baseline
-epoch 200
-Adam
-crop size:512 | f1 score:   0.5068 
-recall:       0.4121
-precision: 0.6579 |
-|  |  | baseline + Sharpen
-epoch 200
-Adam
-crop size: 512 | f1 score:    0.4705 
-recall:        0.3572 
-precision:  0.6891 |
-|  |  | baseline + blur
-epoch 200
-Adam
-crop size:512 | f1 score:    0.4363 
-recall:        0.3272 
-precision:  0.6546 |
-|  |  | baseline + horizontal,vertical Filp
-epoch 200
-Adam
-crop size:512 | f1 score:     0.3907 
-recall:         0.2894 
-precision:   0.6008 |
-|  |  | baseline + Hue , saturation
-epoch 200
-Adam
-crop size:512 | f1 score:      0.2941 
-recall:          0.2164 
-precision:    0.4587 |
-| ICDAR19 | Ko,En,others, 1만장 | AdamW
-epoch 80
-crop size : 1024
-batch 12
-MultiStepAR [40, 70] | f1 score:      0.6509
-recall:          0.5608
-precision:    0.7754 |
-|  |  | baseline augmentation
-AdamW
-epoch 50 | f1 score :     0.6612
-recall:          0.5719
-precision:    0.7837 |
-| ICDAR17 + ICDAR19 | Ko,En, 1500장 | baseline
-epoch 200
-AdamW
-crop size: 412 | f1 score:     0.4545
-recall:         0.3755
-precision:   0.5756
- |
-| ICDAR19 +야외 실제 촬영 한글 이미지 | Ko,En,others,22000장 | baseline augmentaiton
-Epoch 30
-AdamW | f1 score :    0.4121
-recall          0.3385
-precision    0.5266 |
+| ICDAR17 | Ko,En,others, 1만장 | baseline epoch 200 Adam crop size:512 | f1 score:   0.5068 <br> recall:       0.4121 <br> precision: 0.6579 |
+|  |  | baseline + Sharpen <br> epoch 200 <br> Adam <br> crop size: 512 | f1 score:    0.4705 <br> recall:        0.3572 <br> precision:  0.6891 |
+|  |  | baseline + blur <br> epoch 200 <br> Adam <br> crop size:512 | f1 score:    0.4363 <br> recall:        0.3272 <br> precision:  0.6546 |
+|  |  | baseline + horizontal,vertical Filp <br> epoch 200 <br> Adam <br> crop size:512 | f1 score:     0.3907 <br> recall:         0.2894 <br> precision:   0.6008 |
+|  |  | baseline + Hue , saturation <br> epoch 200 <br> Adam <br> crop size:512 | f1 score:      0.2941 <br> recall:          0.2164 <br> precision:    0.4587 |
+| ICDAR19 | Ko,En,others, 1만장 | AdamW <br> epoch 80 <br> crop size : 1024 <br> batch 12 <br> MultiStepAR [40, 70] | f1 score:      0.6509 <br> recall:          0.5608 <br> precision:    0.7754 |
+|  |  | baseline augmentation <br> AdamW <br> epoch 50 | f1 score :     0.6612 <br> recall:          0.5719 <br> precision:    0.7837 |
+| ICDAR17 + ICDAR19 | Ko,En, 1500장 | baseline <br> epoch 200 <br> AdamW <br> crop size: 412 | f1 score:     0.4545 <br> recall:         0.3755 <br> precision:   0.5756 |
+| ICDAR19 +야외 실제 촬영 한글 이미지 | Ko,En,others,22000장 | baseline augmentaiton <br> Epoch 30 <br> AdamW | f1 score :    0.4121 <br> recall          0.3385 <br> precision    0.5266 |
 
 ## Leader Board(Final)
 
